@@ -1,0 +1,7 @@
+# Render.com blueprint: connect the repo, click "New Blueprint", done.
+services:
+  - type: web
+    name: ttb-label-verifier
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health

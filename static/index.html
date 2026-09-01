@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TTB Label Verifier</title>
+<style>
+  /* Design brief from Sarah Chen: "something my mother could figure out". Big type,
+     big targets, three colours that mean three things, nothing hidden behind menus. */
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --ink: #1b1f24; --muted: #5b6470; --line: #d9dee5;
+    --blue: #1f5fbf; --blue-dark: #174a96;
+    --pass: #1e7b3a; --pass-bg: #e6f4ea; --warn: #9a6400; --warn-bg: #fff4d6; --fail: #b3261e; --fail-bg: #fde8e6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  header { background: #0b2a5b; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  header .sub { opacity: .8; font-size: 14px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { font-size: 18px; padding: 12px 22px; border: 2px solid var(--line); background: #fff; border-radius: var(--radius); cursor: pointer; }
+  .tab[aria-selected="true"] { border-color: var(--blue); color: var(--blue); font-weight: 600; background: #eaf1fb; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .panel h2 { margin: 0 0 12px; font-size: 19px; }
+  .step { display: inline-block; background: var(--blue); color: #fff; border-radius: 50%; width: 28px; height: 28px; text-align: center; line-height: 28px; font-size: 15px; margin-right: 8px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input[type=text] { width: 100%; font-size: 17px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; }
+  input[type=text]:focus { outline: 3px solid #bcd3f5; border-color: var(--blue); }
+  .drop { border: 2.5px dashed #9fb3cf; border-radius: var(--radius); padding: 26px; text-align: center; background: #f8fafd; cursor: pointer; }
+  .drop.over { background: #e3edfb; border-color: var(--blue); }
+  .drop p { margin: 6px 0; color: var(--muted); }
+  .drop strong { font-size: 18px; color: var(--ink); }
+  .preview { max-width: 100%; max-height: 420px; display: block; margin: 12px auto 0; border: 1px solid var(--line); border-radius: 6px; }
+  .btn { font-size: 19px; font-weight: 600; padding: 14px 26px; border: 0; border-radius: var(--radius); background: var(--blue); color: #fff; cursor: pointer; width: 100%; margin-top: 18px; }
+  .btn:hover { background: var(--blue-dark); } .btn:disabled { background: #98a4b5; cursor: wait; }
+  .btn.secondary { background: #fff; color: var(--blue); border: 2px solid var(--blue); width: auto; font-size: 16px; padding: 10px 16px; margin: 0; }
+  .banner { border-radius: var(--radius); padding: 18px 20px; font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .banner .big { font-size: 34px; }
+  .banner small { font-size: 15px; font-weight: 400; margin-left: auto; color: var(--muted); }
+  .pass { color: var(--pass); background: var(--pass-bg); } .warn { color: var(--warn); background: var(--warn-bg); } .fail { color: var(--fail); background: var(--fail-bg); } .error { color: var(--fail); background: var(--fail-bg); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .pill { display: inline-block; font-weight: 700; padding: 4px 10px; border-radius: 999px; font-size: 14px; white-space: nowrap; }
+  .pill.skip { background: #eef0f3; color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
+  .msg { color: var(--muted); font-size: 15px; }
+  .diff del { background: #fde8e6; color: var(--fail); text-decoration: line-through; padding: 0 3px; }
+  .diff ins { background: #e6f4ea; color: var(--pass); text-decoration: none; padding: 0 3px; }
+  details { margin-top: 14px; } summary { cursor: pointer; font-weight: 600; color: var(--blue); }
+  pre { white-space: pre-wrap; background: #f8fafd; border: 1px solid var(--line); padding: 12px; border-radius: 8px; font-size: 14px; }
+  .note { background: #fff8e6; border-left: 4px solid var(--warn); padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 15px; }
+  .err { background: var(--fail-bg); color: var(--fail); border-left: 4px solid var(--fail); padding: 12px 14px; border-radius: 6px; margin: 12px 0; font-size: 16px; }
+  .hidden { display: none !important; }
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stat { flex: 1; min-width: 120px; padding: 12px 16px; border-radius: var(--radius); font-size: 16px; }
+  .stat b { display: block; font-size: 30px; }
+  .rowbtn { background: none; border: 0; color: var(--blue); font-weight: 600; cursor: pointer; font-size: 15px; padding: 0; }
+  .filelist { font-size: 15px; color: var(--muted); margin-top: 8px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .samples a { margin-right: 10px; font-size: 14px; }
+  .progress { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; margin-top: 10px; }
+  .progress div { height: 100%; background: var(--blue); width: 0; transition: width .2s; }
+</style>
+</head>
+<body>
+<header>
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 3h6v4l3 5v9H6v-9l3-5z"/><path d="M9 12h6"/></svg>
+  <div><h1>TTB Label Verifier</h1><div class="sub">Checks label artwork against the COLA application. Runs entirely on this server &mdash; no images leave the network.</div></div>
+</header>
+
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-single" aria-selected="true" onclick="switchTab('single')">Check one label</button>
+    <button class="tab" role="tab" id="tab-batch" aria-selected="false" onclick="switchTab('batch')">Check a batch</button>
+  </div>
+
+  <!-- ============================== SINGLE ============================== -->
+  <section id="single">
+    <div class="grid">
+      <div class="panel">
+        <h2><span class="step">1</span>Label image</h2>
+        <div class="drop" id="drop-single" tabindex="0" role="button" aria-label="Choose or drop a label image">
+          <strong>Drop the label image here</strong>
+          <p>or click to choose a file &middot; PNG, JPEG, WEBP, TIFF</p>
+          <input type="file" id="file-single" accept="image/*" class="hidden">
+        </div>
+        <img id="preview" class="preview hidden" alt="Label preview">
+        <p class="samples msg" style="margin-top:12px">Try a sample:
+          <a href="#" data-sample="01_bourbon_clean.png">clean</a>
+          <a href="#" data-sample="02_bourbon_abv_mismatch.png">ABV mismatch</a>
+          <a href="#" data-sample="03_bourbon_titlecase_warning.png">title-case warning</a>
+          <a href="#" data-sample="04_stones_throw_case.png">Stone's Throw</a>
+          <a href="#" data-sample="05_bourbon_altered_warning.png">altered warning</a>
+          <a href="#" data-sample="06_bourbon_rotated.png">rotated</a>
+          <a href="#" data-sample="07_bourbon_photo.jpg">phone photo</a>
+          <a href="#" data-sample="08_wine_missing_warning.png">wine, no warning</a>
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2><span class="step">2</span>What the application says</h2>
+        <form id="form-single" onsubmit="return false">
+          <label for="brand_name">Brand name</label>
+          <input type="text" id="brand_name" name="brand_name" autocomplete="off" placeholder="OLD TOM DISTILLERY">
+          <label for="class_type">Class / type</label>
+          <input type="text" id="class_type" name="class_type" autocomplete="off" placeholder="Kentucky Straight Bourbon Whiskey">
+          <label for="abv">Alcohol content <small>(e.g. 45% or 45% Alc./Vol. (90 Proof))</small></label>
+          <input type="text" id="abv" name="abv" autocomplete="off" placeholder="45%">
+          <label for="net_contents">Net contents</label>
+          <input type="text" id="net_contents" name="net_contents" autocomplete="off" placeholder="750 mL">
+          <label for="producer">Producer / bottler <small>(optional)</small></label>
+          <input type="text" id="producer" name="producer" autocomplete="off" placeholder="Old Tom Distillery, Bardstown, KY">
+          <label for="country_of_origin">Country of origin <small>(imports only)</small></label>
+          <input type="text" id="country_of_origin" name="country_of_origin" autocomplete="off" placeholder="Product of France">
+          <button class="btn" id="go-single" type="button" onclick="verifySingle()">Check this label</button>
+        </form>
+        <p class="msg" style="margin:8px 0 0">The government warning is always checked; it doesn't need to be typed in.</p>
+      </div>
+    </div>
+
+    <div id="err-single" class="err hidden"></div>
+    <div id="result-single" class="panel hidden" style="margin-top:20px"></div>
+  </section>
+
+  <!-- ============================== BATCH ============================== -->
+  <section id="batch" class="hidden">
+    <div class="grid">
+      <div class="panel">
+        <h2><span class="step">1</span>Label images <small class="msg">(up to 300)</small></h2>
+        <div class="drop" id="drop-batch" tabindex="0" role="button" aria-label="Choose or drop label images">
+          <strong>Drop all the label images here</strong>
+          <p>or click to choose files</p>
+          <input type="file" id="files-batch" accept="image/*" multiple class="hidden">
+        </div>
+        <div class="filelist" id="filelist-batch">No files chosen.</div>
+      </div>
+      <div class="panel">
+        <h2><span class="step">2</span>Application data</h2>
+        <p class="msg">Upload a CSV with one row per image (columns: <span class="mono">filename, brand_name, class_type, abv, net_contents, producer, country_of_origin</span>). <a href="/samples/manifest.csv" download>Download example CSV</a></p>
+        <div class="drop" id="drop-manifest" tabindex="0" role="button" aria-label="Choose or drop a CSV manifest">
+          <strong>Drop the CSV here</strong><p>or click to choose</p>
+          <input type="file" id="file-manifest" accept=".csv,text/csv" class="hidden">
+        </div>
+        <div class="filelist" id="filelist-manifest">No CSV chosen. Without one, the fields from the "Check one label" tab are applied to every image.</div>
+        <button class="btn" id="go-batch" type="button" onclick="verifyBatch()">Check all labels</button>
+        <div class="progress hidden" id="progress"><div></div></div>
+      </div>
+    </div>
+    <div id="err-batch" class="err hidden"></div>
+    <div id="result-batch" class="panel hidden" style="margin-top:20px"></div>
+  </section>
+</main>
+
+<script>
+/* ------------------------------------------------------------------ helpers */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const STATUS_WORD = { pass: "Looks good", warn: "Needs a look", fail: "Problem found", error: "Could not read", skip: "Not checked" };
+const STATUS_ICON = { pass: "✓", warn: "!", fail: "✕", error: "✕", skip: "–" };
+
+function switchTab(name) {
+  for (const t of ["single", "batch"]) {
+    $("#" + t).classList.toggle("hidden", t !== name);
+    $("#tab-" + t).setAttribute("aria-selected", t === name);
+  }
+}
+
+// Make a drop zone: click opens picker, drag/drop and keyboard work too.
+function wireDrop(zoneId, inputId, onFiles) {
+  const zone = $(zoneId), input = $(inputId);
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => onFiles(Array.from(input.files)));
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", e => { e.preventDefault(); zone.classList.remove("over"); onFiles(Array.from(e.dataTransfer.files)); });
+}
+
+function showError(id, msg) { const el = $(id); el.textContent = msg; el.classList.remove("hidden"); }
+function clearError(id) { $(id).classList.add("hidden"); }
+
+async function postForm(url, fd) {
+  let res;
+  try { res = await fetch(url, { method: "POST", body: fd }); }
+  catch (e) { throw new Error("Could not reach the server. Check your connection and try again."); }
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch {}
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return res.json();
+}
+
+/* ------------------------------------------------------------------ single */
+let singleFile = null;
+
+wireDrop("#drop-single", "#file-single", files => setSingleFile(files[0]));
+
+function setSingleFile(f) {
+  if (!f) return;
+  singleFile = f;
+  const img = $("#preview");
+  img.src = URL.createObjectURL(f);
+  img.classList.remove("hidden");
+  $("#drop-single strong").textContent = f.name;
+  clearError("#err-single");
+}
+
+// Sample links fetch a bundled image and pre-fill the matching application row.
+document.querySelectorAll("[data-sample]").forEach(a => a.addEventListener("click", async e => {
+  e.preventDefault();
+  const name = a.dataset.sample;
+  const [blob, csv] = await Promise.all([fetch("/samples/" + name).then(r => r.blob()), fetch("/samples/manifest.csv").then(r => r.text())]);
+  setSingleFile(new File([blob], name, { type: blob.type }));
+  const rows = parseCsv(csv);
+  const row = rows.find(r => r.filename === name);
+  if (row) for (const k of ["brand_name", "class_type", "abv", "net_contents", "producer", "country_of_origin"]) $("#" + k).value = row[k] || "";
+}));
+
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const head = lines[0].split(",").map(s => s.trim());
+  return lines.slice(1).map(l => {
+    const cells = []; let cur = "", q = false;
+    for (const ch of l) { if (ch === '"') q = !q; else if (ch === "," && !q) { cells.push(cur); cur = ""; } else cur += ch; }
+    cells.push(cur);
+    return Object.fromEntries(head.map((h, i) => [h, (cells[i] || "").trim()]));
+  });
+}
+
+async function verifySingle() {
+  clearError("#err-single");
+  if (!singleFile) return showError("#err-single", "Please choose a label image first.");
+  const fd = new FormData($("#form-single"));
+  fd.append("image", singleFile);
+  const btn = $("#go-single"); btn.disabled = true; btn.textContent = "Reading label…";
+  try {
+    const r = await postForm("/api/verify", fd);
+    renderSingle(r);
+  } catch (e) { showError("#err-single", e.message); }
+  finally { btn.disabled = false; btn.textContent = "Check this label"; }
+}
+
+function diffHtml(diffs) {
+  if (!diffs || !diffs.length) return "";
+  return `<div class="diff msg" style="margin-top:6px">Differences: ` + diffs.map(d =>
+    (d.expected ? `<del>${esc(d.expected)}</del>` : "") + (d.found ? `<ins>${esc(d.found)}</ins>` : "")).join(" &nbsp; ") + `</div>`;
+}
+
+function resultHtml(r) {
+  if (r.overall === "error") return `<div class="banner error"><span class="big">✕</span> Could not read this image <small>${esc(r.error)}</small></div>`;
+  const s = r.overall;
+  const rows = r.fields.map(f => `
+    <tr>
+      <td><span class="pill ${f.status}">${STATUS_ICON[f.status]} ${esc(STATUS_WORD[f.status])}</span></td>
+      <td><b>${esc(f.label)}</b><div class="msg">${esc(f.message)}</div>${f.field === "government_warning" ? diffHtml(r.warning_diffs) : ""}</td>
+      <td class="mono">${esc(f.field === "government_warning" ? "(required statement)" : f.expected)}</td>
+      <td class="mono">${esc(f.found)}</td>
+    </tr>`).join("");
+  const notes = (r.ocr?.warnings || []).map(w => `<div class="note">${esc(w)}</div>`).join("");
+  return `
+    <div class="banner ${s}"><span class="big">${STATUS_ICON[s]}</span> ${esc(STATUS_WORD[s])}
+      <small>${esc(r.filename)} &middot; ${r.timing_ms} ms &middot; read confidence ${r.ocr?.confidence ?? "–"}%</small></div>
+    ${notes}
+    <table><thead><tr><th style="width:150px">Result</th><th>Check</th><th style="width:22%">Application says</th><th style="width:26%">Label shows</th></tr></thead><tbody>${rows}</tbody></table>
+    <details><summary>Show all text read from the label</summary><pre>${esc(r.ocr?.text || "")}</pre></details>`;
+}
+
+function renderSingle(r) {
+  const el = $("#result-single");
+  el.innerHTML = resultHtml(r);
+  el.classList.remove("hidden");
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ------------------------------------------------------------------ batch */
+let batchFiles = [], manifestFile = null;
+wireDrop("#drop-batch", "#files-batch", files => {
+  batchFiles = files.filter(f => f.type.startsWith("image/"));
+  $("#filelist-batch").textContent = batchFiles.length ? `${batchFiles.length} image(s): ${batchFiles.slice(0, 6).map(f => f.name).join(", ")}${batchFiles.length > 6 ? ", …" : ""}` : "No files chosen.";
+});
+wireDrop("#drop-manifest", "#file-manifest", files => {
+  manifestFile = files[0] || null;
+  $("#filelist-manifest").textContent = manifestFile ? `Using ${manifestFile.name}` : "No CSV chosen.";
+});
+
+const CHUNK = 10; // upload in chunks so the table fills in as results arrive and nothing times out
+
+async function verifyBatch() {
+  clearError("#err-batch");
+  if (!batchFiles.length) return showError("#err-batch", "Please choose at least one label image.");
+  const btn = $("#go-batch"); btn.disabled = true; btn.textContent = "Checking…";
+  const prog = $("#progress"); prog.classList.remove("hidden"); prog.firstElementChild.style.width = "0%";
+  const all = [];
+  try {
+    for (let i = 0; i < batchFiles.length; i += CHUNK) {
+      const fd = new FormData($("#form-single"));
+      batchFiles.slice(i, i + CHUNK).forEach(f => fd.append("images", f));
+      if (manifestFile) fd.append("manifest", manifestFile);
+      const r = await postForm("/api/verify-batch", fd);
+      all.push(...r.results);
+      prog.firstElementChild.style.width = Math.round(100 * Math.min(i + CHUNK, batchFiles.length) / batchFiles.length) + "%";
+      renderBatch(all, i + CHUNK < batchFiles.length);
+    }
+  } catch (e) { showError("#err-batch", e.message); }
+  finally { btn.disabled = false; btn.textContent = "Check all labels"; }
+}
+
+let lastBatch = [];
+const ORDER = { fail: 0, error: 1, warn: 2, pass: 3 };
+function renderBatch(unsorted, inProgress) {
+  const results = [...unsorted].sort((a, b) => ORDER[a.overall] - ORDER[b.overall]);  // problems first
+  lastBatch = results;
+  const counts = { pass: 0, warn: 0, fail: 0, error: 0 };
+  results.forEach(r => counts[r.overall] = (counts[r.overall] || 0) + 1);
+  const totalMs = results.reduce((a, r) => a + (r.timing_ms || 0), 0);
+  const rows = results.map((r, i) => {
+    const bad = (r.fields || []).filter(f => f.status === "fail" || f.status === "warn").map(f => f.label).join(", ");
+    return `<tr>
+      <td><span class="pill ${r.overall}">${STATUS_ICON[r.overall]} ${esc(STATUS_WORD[r.overall])}</span></td>
+      <td>${esc(r.filename)}</td>
+      <td>${esc(r.application?.brand_name || "")}</td>
+      <td class="msg">${esc(r.error || bad || "All checks passed")}</td>
+      <td>${r.timing_ms} ms</td>
+      <td><button class="rowbtn" onclick="toggleDetail(${i})">Details</button></td>
+    </tr><tr id="detail-${i}" class="hidden"><td colspan="6" style="background:#fafbfc">${resultHtml(r)}</td></tr>`;
+  }).join("");
+  $("#result-batch").innerHTML = `
+    <div class="summary">
+      <div class="stat pass"><b>${counts.pass}</b>Looks good</div>
+      <div class="stat warn"><b>${counts.warn}</b>Needs a look</div>
+      <div class="stat fail"><b>${counts.fail}</b>Problem found</div>
+      ${counts.error ? `<div class="stat error"><b>${counts.error}</b>Could not read</div>` : ""}
+      <div class="stat" style="background:#eef0f3"><b>${(totalMs / 1000).toFixed(1)}s</b>${results.length} label(s)${inProgress ? " so far…" : ""}</div>
+    </div>
+    <div class="toolbar">
+      <button class="btn secondary" onclick="downloadCsv()">Download results as CSV</button>
+      <span class="msg">Sorted so problems appear first.</span>
+    </div>
+    <table><thead><tr><th>Result</th><th>File</th><th>Brand</th><th>Attention needed</th><th>Time</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  $("#result-batch").classList.remove("hidden");
+}
+function toggleDetail(i) { $("#detail-" + i).classList.toggle("hidden"); }
+
+function downloadCsv() {
+  const rows = [["filename", "overall", "brand_name", "brand", "class_type", "abv", "net_contents", "producer", "country_of_origin", "government_warning", "notes", "ms"]];
+  lastBatch.forEach(r => {
+    const f = Object.fromEntries((r.fields || []).map(x => [x.field, x]));
+    const st = k => f[k]?.status || "";
+    const notes = (r.fields || []).filter(x => x.status !== "pass" && x.status !== "skip").map(x => `${x.label}: ${x.message}`).join(" | ") || r.error || "";
+    rows.push([r.filename, r.overall, r.application?.brand_name || "", st("brand_name"), st("class_type"), st("abv"), st("net_contents"), st("producer"), st("country_of_origin"), st("government_warning"), notes, r.timing_ms]);
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "label-check-results.csv"; a.click();
+}
+</script>
+</body>
+</html>
