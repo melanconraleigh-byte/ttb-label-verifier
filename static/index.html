@@ -63,7 +63,10 @@
   .rowbtn { background: none; border: 0; color: var(--blue); font-weight: 600; cursor: pointer; font-size: 15px; padding: 0; }
   .filelist { font-size: 15px; color: var(--muted); margin-top: 8px; }
   .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-  .samples a { margin-right: 10px; font-size: 14px; }
+  .samples { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .samples-title { font-weight: 600; margin-bottom: 8px; }
+  .samples button { font-size: 15px; padding: 8px 14px; margin: 0 6px 6px 0; border: 1.5px solid var(--blue); background: #fff; color: var(--blue); border-radius: 999px; cursor: pointer; }
+  .samples button:hover { background: #eaf1fb; }
   .progress { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; margin-top: 10px; }
   .progress div { height: 100%; background: var(--blue); width: 0; transition: width .2s; }
 </style>
@@ -91,16 +94,17 @@
           <input type="file" id="file-single" accept="image/*" class="hidden">
         </div>
         <img id="preview" class="preview hidden" alt="Label preview">
-        <p class="samples msg" style="margin-top:12px">Try a sample:
-          <a href="#" data-sample="01_bourbon_clean.png">clean</a>
-          <a href="#" data-sample="02_bourbon_abv_mismatch.png">ABV mismatch</a>
-          <a href="#" data-sample="03_bourbon_titlecase_warning.png">title-case warning</a>
-          <a href="#" data-sample="04_stones_throw_case.png">Stone's Throw</a>
-          <a href="#" data-sample="05_bourbon_altered_warning.png">altered warning</a>
-          <a href="#" data-sample="06_bourbon_rotated.png">rotated</a>
-          <a href="#" data-sample="07_bourbon_photo.jpg">phone photo</a>
-          <a href="#" data-sample="08_wine_missing_warning.png">wine, no warning</a>
-        </p>
+        <div class="samples">
+          <div class="samples-title">No image handy? Try a sample label:</div>
+          <button type="button" data-sample="01_bourbon_clean.png">Clean label</button>
+          <button type="button" data-sample="02_bourbon_abv_mismatch.png">ABV mismatch</button>
+          <button type="button" data-sample="03_bourbon_titlecase_warning.png">Title-case warning</button>
+          <button type="button" data-sample="04_stones_throw_case.png">Stone's Throw</button>
+          <button type="button" data-sample="05_bourbon_altered_warning.png">Altered warning</button>
+          <button type="button" data-sample="06_bourbon_rotated.png">Rotated</button>
+          <button type="button" data-sample="07_bourbon_photo.jpg">Phone photo</button>
+          <button type="button" data-sample="08_wine_missing_warning.png">Wine, no warning</button>
+        </div>
       </div>
 
       <div class="panel">
@@ -259,7 +263,7 @@ function resultHtml(r) {
   const rows = r.fields.map(f => `
     <tr>
       <td><span class="pill ${f.status}">${STATUS_ICON[f.status]} ${esc(STATUS_WORD[f.status])}</span></td>
-      <td><b>${esc(f.label)}</b><div class="msg">${esc(f.message)}</div>${f.field === "government_warning" ? diffHtml(r.warning_diffs) : ""}</td>
+      <td><b>${esc(f.label)}</b><div class="msg">${esc(f.message)}</div>${f.field === "government_warning" && f.status !== "pass" ? diffHtml(r.warning_diffs) : ""}</td>
       <td class="mono">${esc(f.field === "government_warning" ? "(required statement)" : f.expected)}</td>
       <td class="mono">${esc(f.found)}</td>
     </tr>`).join("");

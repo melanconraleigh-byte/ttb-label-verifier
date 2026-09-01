@@ -36,7 +36,7 @@ The repo carries a `Dockerfile`, a `render.yaml` and a `fly.toml`. Any of these 
 
 | Platform | Steps |
 |---|---|
-| Render | New → Blueprint → pick this repo. Free tier is fine (one label ≈ 1.7 s on their shared CPU). |
+| Render | New → Blueprint → pick this repo. Pick a paid instance: a clean label measured 0.9 s there. The free tier is 0.1 CPU and too slow for the 5-second target. |
 | Fly.io | `fly launch --copy-config --no-deploy && fly deploy` |
 | Railway | New project → Deploy from GitHub → it detects the Dockerfile. |
 
@@ -44,7 +44,7 @@ Set `PORT` if the platform injects a different one; the container reads it.
 
 ## Using it
 
-**Check one label.** Drop the image, type what the application says, press the button. Every field comes back as *Looks good*, *Needs a look*, or *Problem found* with a one-line reason, the value from the application, and the value read off the label. The Government Warning is always checked and shows a word-level diff when it is wrong. "Try a sample" links load bundled test labels with their application data pre-filled.
+**Check one label.** Drop the image, type what the application says, press the button. Every field comes back as *Looks good*, *Needs a look*, or *Problem found* with a one-line reason, the value from the application, and the value read off the label. The Government Warning is always checked and shows a word-level diff when it is wrong. The sample buttons load bundled test labels with their application data pre-filled.
 
 **Check a batch.** Drop all the images plus a CSV manifest (`filename, brand_name, class_type, abv, net_contents, producer, country_of_origin` — an example is linked in the UI). Results stream in ten at a time, sorted with problems first, and can be downloaded as CSV. Without a manifest, the fields typed on the single-label tab are applied to every image.
 

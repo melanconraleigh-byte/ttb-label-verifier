@@ -285,7 +285,7 @@ def check_government_warning(ocr_text: str) -> tuple[FieldResult, list[dict]]:
     # punctuation differs, treat as a pass but say so - the agent still eyeballs it.
     if alnum_only(found) == alnum_only(GOVERNMENT_WARNING):
         return FieldResult("government_warning", label, Status.PASS, GOVERNMENT_WARNING, found,
-                           "All words match. Punctuation and bold type on 'GOVERNMENT WARNING:' should be confirmed by eye.", score), diffs
+                           "All words match. Punctuation and bold type on 'GOVERNMENT WARNING:' should be confirmed by eye.", score), []
     if _looks_like_ocr_noise(diffs):
         return FieldResult("government_warning", label, Status.WARN, GOVERNMENT_WARNING, found,
                            f"Wording differs by a few characters ({score:.1f}% similar). Likely OCR noise - confirm the highlighted words by eye.", score), diffs
