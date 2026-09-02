@@ -17,6 +17,7 @@ import pytesseract
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from .ocr import extract_text
 from .verify import Application, GOVERNMENT_WARNING, verify
@@ -107,7 +108,9 @@ async def verify_single(
     data = await image.read()
     _validate_upload(image, data)
     application = Application(brand_name, class_type, abv, net_contents, producer, country_of_origin)
-    return JSONResponse(_process(image.filename or "upload", data, application))
+    # OCR is CPU-bound and synchronous. Run it off the event loop so /api/health and
+    # other agents' requests are not stalled while a label (or a batch) is being read.
+    return JSONResponse(await run_in_threadpool(_process, image.filename or "upload", data, application))
 
 
 def _parse_manifest(raw: bytes) -> dict[str, Application]:
@@ -178,7 +181,7 @@ async def verify_batch(
             results.append({"filename": img.filename, "overall": "error", "fields": [], "timing_ms": 0,
                             "error": "No row in manifest for this filename."})
             continue
-        results.append(_process(img.filename or "upload", data, application or default_app))
+        results.append(await run_in_threadpool(_process, img.filename or "upload", data, application or default_app))
 
     summary = {s: sum(1 for r in results if r["overall"] == s) for s in ("pass", "warn", "fail", "error")}
     return JSONResponse({"results": results, "summary": summary, "total_ms": int((time.perf_counter() - t0) * 1000)})
