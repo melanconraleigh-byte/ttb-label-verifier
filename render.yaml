@@ -3,5 +3,5 @@ services:
   - type: web
     name: ttb-label-verifier
     runtime: docker
-    plan: free
+    plan: standard
     healthCheckPath: /api/health
