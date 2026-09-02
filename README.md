@@ -1,5 +1,7 @@
 # TTB Label Verifier
 
+**Live prototype:** https://ttb-label-verifier-xw1m.onrender.com/ &nbsp;|&nbsp; **Source:** https://github.com/melanconraleigh-byte/ttb-label-verifier
+
 A prototype that reads an alcohol-beverage label image, extracts the text with local OCR, and checks it against the fields from the COLA application: brand name, class/type, alcohol content, net contents, producer, country of origin, and the mandatory Government Warning statement. Single labels or batches of up to 300.
 
 Runs entirely on the server. No image or application data leaves the machine, no API keys, no outbound network calls.
